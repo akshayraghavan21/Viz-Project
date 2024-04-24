@@ -1,0 +1,60 @@
+/* styles.css */
+
+/* Global styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.row {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+/* Graph container styles */
+.left, .right {
+    width: 48%; /* Adjust according to your layout */
+}
+
+.graph-container {
+    border: 1px solid #ddd;
+    padding: 20px;
+}
+
+/* Dropdown styles */
+.dropdown-container {
+    margin-bottom: 20px;
+}
+
+/* Adjustments for specific graphs */
+#graph1 {
+    /* Add specific styles for graph1 container */
+}
+
+#graph2 {
+    /* Add specific styles for graph2 container */
+}
+
+#graph3 {
+    /* Add specific styles for graph3 container */
+}
+
+#graph4 {
+    /* Add specific styles for graph4 container */
+}

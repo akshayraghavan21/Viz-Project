@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="flex-container">
+            <div class="row">
+                <!-- <div id="graph1" class="left">
+                    <div id="graph1dropdown1">
+                        <select id="graph1dropdown1options"></select>
+                    </div>
+                </div> -->
+                <div id="parent_graph1">
+                    <div id="graph1dropdown1">
+                        <select id="graph1dropdown1options"></select>
+                    </div>
+                    <div id="graph1" class="left">
+                        <!-- Graph content goes here -->
+                    </div>
+                </div>
+                <div id="graph2" class="right"></div>
+            </div>
+            <div class="row">
+                <div id="graph3" class="left"></div>
+                <div id="graph4" class="right"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- <script src="https://d3js.org/d3.v7.min.js"></script> -->
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
