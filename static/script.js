@@ -1,5 +1,282 @@
 const graph1_dropdown1_options_arr = ["anxiety", "depression", "insomnia", "ocd"];
 let graph1_data;
+colorScale = d3.scale.category10();
+function mds_rows_plot(num_clusters) {
+    $.get('/mds_row_data/' + num_clusters, function(data) {
+        // Render scatter plot using D3.js
+        d3.select("#mds_row_plot").selectAll("*").remove();
+        const margin = { top: 50, right: 50, bottom: 80, left: 70 };
+        const width = 400 - margin.left - margin.right;
+        const height = 500 - margin.top - margin.bottom;
+
+        const svg = d3.select('#mds_row_plot').append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+        // Set up scales
+        const xScale = d3.scale.linear()
+            .domain(d3.extent(data, function(d) { return d.x; }))
+            .range([0, width])
+            .nice();
+
+        const yScale = d3.scale.linear()
+            .domain(d3.extent(data, function(d) { return d.y; }))
+            .range([height, 0])
+            .nice();
+
+        // Define color scale for clusters
+        //const colorScale = d3.scale.category10();
+
+        // Draw points
+        svg.selectAll('circle')
+            .data(data)
+            .enter().append('circle')
+            .attr('cx', function(d) { return xScale(d.x); })
+            .attr('cy', function(d) { return yScale(d.y); })
+            .attr('r', 5)
+            .style('fill', function(d) { return colorScale(d.cluster); });
+
+        // Axes labels
+        svg.append('text')
+            .attr('transform', 'translate(' + (width / 2) + ',' + (height + margin.top + 10) + ')')
+            .style('text-anchor', 'middle')
+            .text('Dimension 1');
+
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', 0 - margin.left)
+            .attr('x', 0 - (height / 2))
+            .attr('dy', '1em')
+            .style('text-anchor', 'middle')
+            .text('Dimension 2');
+
+        // Draw x-axis
+        svg.append('g')
+            .attr('transform', 'translate(0,' + height + ')')
+            .call(d3.svg.axis().scale(xScale).orient('bottom'));
+
+        // Draw y-axis
+        svg.append('g')
+            .call(d3.svg.axis().scale(yScale).orient('left'));
+
+        // Plot title
+        svg.append('text')
+            .attr('x', (width / 2))
+            .attr('y', 0 - (margin.top / 2))
+            .attr('text-anchor', 'middle')
+            .style('font-size', '16px')
+            .text('MDS Data Plot');
+
+        // Legend
+        const legend = svg.selectAll('.legend')
+            .data(colorScale.domain())
+            .enter().append('g')
+            .attr('class', 'legend')
+            .attr('transform', function(d, i) { return 'translate(0,' + i * 20 + ')'; });
+
+        legend.append('rect')
+            .attr('x', width - 18)
+            .attr('width', 18)
+            .attr('height', 18)
+            .style('fill', colorScale);
+
+        legend.append('text')
+            .attr('x', width - 24)
+            .attr('y', 9)
+            .attr('dy', '.35em')
+            .style('text-anchor', 'end')
+            .text(function(d) { return 'Cluster ' + d; });
+    });
+}
+
+//function plotScatterplotMatrix(data, num_of_clusters) {
+//
+//
+//  d3.select("#scatterplot").selectAll("*").remove();
+//  const columns = Object.keys(data[0]).filter(function(d) { return d !== "labels"; });
+//  const numColumns = columns.length;
+//
+//
+//  const plotSize = 80,
+//    padding = 50,
+//    width = (numColumns * plotSize) + ((numColumns + 1) * padding),
+//    height = (numColumns * plotSize) + ((numColumns + 1) * padding);
+//
+//
+//  const svg = d3.select("#scatterplot").append("svg")
+//    .attr("width", width)
+//    .attr("height", height)
+//    .append("g");
+//
+//
+//  var x = d3.scale.linear()
+//    .range([0, plotSize]),
+//    y = d3.scale.linear().range([plotSize, 0]);
+//
+//
+//  const color = d3.scale.category10();
+//
+//
+//  for (let i = 0; i < numColumns; i++) {
+//    for (let j = 0; j < numColumns; j++) {
+//      const xColumn = columns[i],
+//        yColumn = columns[j];
+//
+//
+//      const xExtent = d3.extent(data, d => d[xColumn]);
+//      const yExtent = d3.extent(data, d => d[yColumn]);
+//      const maxExtent = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]), Math.abs(yExtent[0]), Math.abs(yExtent[1]));
+//      x.domain([0, maxExtent]).nice();
+//      y.domain([0, maxExtent]).nice();
+//
+//
+//      const plot = svg.append("g")
+//        .attr("transform", "translate(" + (padding + i * (plotSize + padding)) + "," + (padding + j * (plotSize + padding)) + ")");
+//
+//
+//      plot.selectAll("dot")
+//        .data(data)
+//        .enter().append("circle")
+//        .attr("r", 3.5)
+//        .attr("cx", d => x(d[xColumn]))
+//        .attr("cy", d => y(d[yColumn]))
+//        .style("fill", d => color(d.labels)); // Color based on cluster label
+//
+//
+//      if (j === numColumns - 1) {
+//        plot.append("g")
+//          .attr("transform", "translate(0," + plotSize + ")")
+//          .call(d3.axisBottom(x).ticks(4));
+//      } else {
+//        plot.append("g")
+//          .attr("transform", "translate(0," + plotSize + ")")
+//          .call(d3.axisBottom(x).ticks(4).tickSizeOuter(0));
+//      }
+//
+//
+//      if (i === 0) {
+//        plot.append("g")
+//          .call(d3.axisLeft(y).ticks(4));
+//      } else {
+//        plot.append("g")
+//          .call(d3.axisLeft(y).ticks(4).tickSizeOuter(0));
+//      }
+//
+//
+//      if (i === j) {
+//        plot.append("text")
+//          .attr("x", plotSize / 2)
+//          .attr("y", plotSize + (padding + 20) / 2)
+//          .style("text-anchor", "middle")
+//          .text(formatAttributeName(xColumn))
+//          .attr("transform", "rotate(0 " + plotSize / 2 + "," + (plotSize + padding / 2) + ")");
+//      }
+//    }
+//  }
+//
+//  svg.append("text")
+//                .attr("x", (width / 2))
+//                .attr("y", (height/2)-260)
+//                .attr("text-anchor", "middle")
+//                .style("font-size", "16px")
+//                .style("text-decoration", "underline")
+//                .text("Pairwise Scatter Plot for top 4 Attributes");
+//
+//  function formatAttributeName(attributeName) {
+//    return attributeName.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
+//  }
+//
+//
+//}
+function plotScatterplotMatrix(data, num_of_clusters) {
+
+  d3.select("#scatterplot").selectAll("*").remove();
+  var columns = Object.keys(data[0]).filter(function(d) { return d !== "labels"; });
+  var numColumns = columns.length;
+
+  var plotSize = 80,
+      padding = 50,
+      width = (numColumns * plotSize) + ((numColumns + 1) * padding),
+      height = (numColumns * plotSize) + ((numColumns + 1) * padding);
+
+  var svg = d3.select("#scatterplot").append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .append("g");
+
+  var x = d3.scale.linear()
+      .range([0, plotSize]);
+  var y = d3.scale.linear().range([plotSize, 0]);
+
+  var color = d3.scale.category10();
+
+  for (var i = 0; i < numColumns; i++) {
+    for (var j = 0; j < numColumns; j++) {
+      var xColumn = columns[i];
+      var yColumn = columns[j];
+
+      var xExtent = d3.extent(data, function(d) { return d[xColumn]; });
+      var yExtent = d3.extent(data, function(d) { return d[yColumn]; });
+      var maxExtent = Math.max(Math.abs(xExtent[0]), Math.abs(xExtent[1]), Math.abs(yExtent[0]), Math.abs(yExtent[1]));
+      x.domain([0, maxExtent]).nice();
+      y.domain([0, maxExtent]).nice();
+
+      var plot = svg.append("g")
+          .attr("transform", "translate(" + (padding + i * (plotSize + padding)) + "," + (padding + j * (plotSize + padding)) + ")");
+
+      plot.selectAll("dot")
+          .data(data)
+          .enter().append("circle")
+          .attr("r", 3.5)
+          .attr("cx", function(d) { return x(d[xColumn]); })
+          .attr("cy", function(d) { return y(d[yColumn]); })
+          .style("fill", function(d) { return color(d.labels); }); // Color based on cluster label
+
+      if (j === numColumns - 1) {
+        plot.append("g")
+            .attr("transform", "translate(0," + plotSize + ")")
+            .call(d3.svg.axis().scale(x).orient("bottom").ticks(4));
+      } else {
+        plot.append("g")
+            .attr("transform", "translate(0," + plotSize + ")")
+            .call(d3.svg.axis().scale(x).orient("bottom").ticks(4));
+      }
+
+      if (i === 0) {
+        plot.append("g")
+            .call(d3.svg.axis().scale(y).orient("left").ticks(4));
+      } else {
+        plot.append("g")
+            .call(d3.svg.axis().scale(y).orient("left").ticks(4));
+      }
+
+      if (i === j) {
+        plot.append("text")
+            .attr("x", plotSize / 2)
+            .attr("y", plotSize + (padding + 20) / 2)
+            .style("text-anchor", "middle")
+            .text(formatAttributeName(xColumn))
+            .attr("transform", "rotate(0 " + plotSize / 2 + "," + (plotSize + padding / 2) + ")");
+      }
+    }
+  }
+
+  svg.append("text")
+      .attr("x", (width / 2))
+      .attr("y", (height/2)-260)
+      .attr("text-anchor", "middle")
+      .style("font-size", "16px")
+      .style("text-decoration", "underline")
+      .text("Pairwise Scatter Plot for top 4 Attributes");
+
+  function formatAttributeName(attributeName) {
+    return attributeName.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
+  }
+}
+
+
 function render_plot_1_options() {
   // Get the dropdown element
   const dropdown = document.getElementById('graph1dropdown1options');
@@ -60,25 +337,42 @@ function render_plot_1(selected_option) {
     var unique_fav_genres = graph1_data.map(d => d["fav_genre"]);
 
     // Show the Y scale
-    var x = d3.scaleBand()
-      .range([0, width])
-      .domain(unique_fav_genres)
-      .paddingInner(1)
-      .paddingOuter(.5)
-    svg.append("g")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x))
+//    var x = d3.scaleBand()
+//      .range([0, width])
+//      .domain(unique_fav_genres)
+//      .paddingInner(1)
+//      .paddingOuter(.5)
+var x = d3.scale.ordinal()
+    .rangeRoundBands([0, width], .5)
+    .domain(unique_fav_genres);
+
+//    svg.append("g")
+//      .attr("transform", "translate(0," + height + ")")
+//      .call(d3.axisBottom(x))
+svg.append("g")
+    .attr("class", "axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.svg.axis().scale(x).orient("bottom"));
 
     // Show the X scale
-    var y = d3.scaleLinear()
-      .domain([-0.5, 10.5])
-      .range([height, 0])
-    svg.append("g").call(d3.axisLeft(y))
+//    var y = d3.scaleLinear()
+//      .domain([-0.5, 10.5])
+//      .range([height, 0])
+//    svg.append("g").call(d3.axisLeft(y))
+var y = d3.scale.linear()
+    .domain([-0.5, 10.5])
+    .range([height, 0]);
+svg.append("g")
+    .call(d3.svg.axis().scale(y).orient("left"));
 
     // Color scale
-    var myColor = d3.scaleSequential()
-      .interpolator(d3.interpolateInferno)
-      .domain([-0.5, 10.5])
+//    var myColor = d3.scaleSequential()
+//      .interpolator(d3.interpolateInferno)
+//      .domain([-0.5, 10.5])
+//var myColor = d3.scale.linear()
+//    .domain([-0.5, 10.5])
+//    .range([d3.interpolateInferno(0), d3.interpolateInferno(1)]);
+var myColor = d3.scale.category10();
 
     // Add X axis label:
     svg.append("text")
@@ -96,8 +390,8 @@ function render_plot_1(selected_option) {
     .append("line")
       .attr("x1", function(d){return(x(d.key))})
       .attr("x2", function(d){return(x(d.key))})
-      .attr("y1", function(d){return(y(Math.max(0, d.value.min)))})
-      .attr("y2", function(d){return(y(Math.min(10, d.value.max)))})
+      .attr("y1", function(d){return(y(Math.max(0, d.values.min)))})
+      .attr("y2", function(d){return(y(Math.min(10, d.values.max)))})
       .attr("stroke", "blue")
       .style("width", 40)
 
@@ -108,8 +402,8 @@ function render_plot_1(selected_option) {
     .enter()
     .append("rect")
         .attr("x", function(d){return(x(d.key)-boxWidth/2)})
-        .attr("y", function(d){return(y(d.value.q3))})
-        .attr("height", function(d){return(y(d.value.q1)-y(d.value.q3))})
+        .attr("y", function(d){return(y(d.values.q3))})
+        .attr("height", function(d){return(y(d.values.q1)-y(d.values.q3))})
         .attr("width", boxWidth )
         .attr("stroke", "black")
         .style("fill", "#69b3a2")
@@ -122,8 +416,8 @@ function render_plot_1(selected_option) {
   .append("line")
     .attr("x1", function(d){return(x(d.key)-boxWidth/2) })
     .attr("x2", function(d){return(x(d.key)+boxWidth/2) })
-    .attr("y1", function(d){return(y(d.value.median))})
-    .attr("y2", function(d){return(y(d.value.median))})
+    .attr("y1", function(d){return(y(d.values.median))})
+    .attr("y2", function(d){return(y(d.values.median))})
     .attr("stroke", "black")
     .style("width", 80)
 
@@ -191,6 +485,14 @@ function convertToObject(data) {
   return convertedData;
 }
 
+function render_scatter_plot()
+{
+        $.get('/kmeans/'+2, function(data) {
+        //generateTable(data.table);
+        plotScatterplotMatrix(data,2);
+
+    });
+}
 function initialize(data) {
   fetch(`/graph1_fetch_data`)
     .then(response => response.json())
@@ -198,6 +500,9 @@ function initialize(data) {
       graph1_data = convertToObject(data.result);
       console.log(graph1_data);
       render_plot_1_options();
+      render_scatter_plot();
+      mds_rows_plot(3);
+
     })
     .catch(error => console.error("Error Reading Graph1 Box Plot Data:", error));
 }
@@ -212,6 +517,8 @@ function runPythonScriptAndInitialize() {
   })
   .catch(error => console.error('Error:', error));
 }
+
+
 
 // Call the function to run the Python script and initialize the webpage
 runPythonScriptAndInitialize();
