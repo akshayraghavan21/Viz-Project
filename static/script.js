@@ -5,8 +5,8 @@ function mds_rows_plot(num_clusters) {
     $.get('/mds_row_data/' + num_clusters, function(data) {
         // Render scatter plot using D3.js
         d3.select("#mds_row_plot").selectAll("*").remove();
-        const margin = { top: 50, right: 50, bottom: 80, left: 70 };
-        const width = 400 - margin.left - margin.right;
+        const margin = { top: 50, right: 50, bottom: 80, left: 50 };
+        const width = 500 - margin.left - margin.right;
         const height = 500 - margin.top - margin.bottom;
 
         const svg = d3.select('#mds_row_plot').append('svg')
@@ -53,9 +53,15 @@ function mds_rows_plot(num_clusters) {
             .text('Dimension 2');
 
         // Draw x-axis
-        svg.append('g')
-            .attr('transform', 'translate(0,' + height + ')')
-            .call(d3.svg.axis().scale(xScale).orient('bottom'));
+//        svg.append('g')
+//            .attr('transform', 'translate(0,' + height + ')')
+//            .call(d3.svg.axis().scale(xScale).orient('bottom'));
+svg.append('g')
+    .attr('transform', 'translate(0,' + height + ')')
+    .call(d3.svg.axis().scale(xScale).orient('bottom'))
+    .selectAll('text')
+    .attr('transform', 'rotate(-45)')
+    .style('text-anchor', 'end');
 
         // Draw y-axis
         svg.append('g')
@@ -87,9 +93,607 @@ function mds_rows_plot(num_clusters) {
             .attr('y', 9)
             .attr('dy', '.35em')
             .style('text-anchor', 'end')
+            //.attr('transform', 'rotate(-45)')
             .text(function(d) { return 'Cluster ' + d; });
     });
 }
+
+function plotRadarPlot() {
+  d3.select("#radarplot").selectAll("*").remove();
+
+  // Make a GET request to fetch data from the API
+  $.get('/radar_plot', function(data) {
+    var radarData = [];
+    var genres = [];
+
+    // Extracting data
+    data.forEach(function(d) {
+      var genre = d.fav_genre;
+      genres.push(genre);
+      radarData.push([
+        {axis: "Anxiety", value: d.anxiety},
+        {axis: "Depression", value: d.depression},
+        {axis: "Insomnia", value: d.insomnia},
+        {axis: "OCD", value: d.ocd}
+      ]);
+    });
+
+    // Radar chart configuration
+    var margin = {top: 50, right: 100, bottom: 50, left: 50},
+        width = Math.min(500, window.innerWidth - 10) - margin.left - margin.right,
+        height = Math.min(400, window.innerHeight - margin.top - margin.bottom - 20);
+
+    var color = d3.scale.ordinal()
+      .range(["#EDC951","#CC333F","#00A0B0"]);
+
+    var radarChartOptions = {
+      w: width,
+      h: height,
+      margin: margin,
+      maxValue: 0,
+      levels: 0,
+      roundStrokes: true,
+      color: color
+    };
+
+    // Call radar chart function
+    RadarChart("#radarplot", radarData, genres, radarChartOptions);
+  });
+}
+
+function wrap(text, width) {
+  text.each(function() {
+    var text = d3.select(this),
+        words = text.text().split(/\s+/).reverse(),
+        word,
+        line = [],
+        lineNumber = 0,
+        lineHeight = 1.1, // ems
+        y = text.attr("y"),
+        dy = parseFloat(text.attr("dy")),
+        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+
+    while (word = words.pop()) {
+      line.push(word);
+      tspan.text(line.join(" "));
+      if (tspan.node().getComputedTextLength() > width) {
+        line.pop();
+        tspan.text(line.join(" "));
+        line = [word];
+        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+      }
+    }
+  });
+}
+
+function RadarChart(id, data, genres, options) {
+  var cfg = {
+    w: 600,				// Width of the circle
+    h: 600,				// Height of the circle
+    margin: {top: 20, right: 20, bottom: 20, left: 20}, // The margins of the SVG
+    levels: 3,				// How many levels or inner circles should there be drawn
+    maxValue: 0, 			// What is the value that the biggest circle will represent
+    labelFactor: 1.25, 	// How much farther than the radius of the outer circle should the labels be placed
+    wrapWidth: 60, 		// The number of pixels after which a label needs to be given a new line
+    opacityArea: 0.05, 	// The opacity of the area of the blob
+    dotRadius: 4, 			// The size of the colored circles of each blog
+    opacityCircles: 0.1, 	// The opacity of the circles of each blob
+    strokeWidth: 2, 		// The width of the stroke around each blob
+    roundStrokes: false,	// If true the area and stroke will follow a round path (cardinal-closed)
+    color: d3.scale.category10(),	// Color function
+    axisFontSize: "11px",  // Font size for axis labels
+    tooltipFontSize: "12px" // Font size for tooltip
+  };
+
+  // Put all of the options into a variable called cfg
+  if('undefined' !== typeof options){
+    for(var i in options){
+      if('undefined' !== typeof options[i]){ cfg[i] = options[i]; }
+    }
+  }
+
+  // Calculate the maxValue if not provided
+  if(cfg.maxValue === 0) {
+    cfg.maxValue = Math.ceil(d3.max(data.map(function(d) {
+      return d3.max(d.map(function(o) {
+        return o.value;
+      }));
+    })));
+  }
+
+  var allAxis = data[0].map(function(d) { return d.axis; }), // Names of each axis
+      total = allAxis.length,					// The number of different axes
+      radius = Math.min(cfg.w/2, cfg.h/2), 	// Radius of the outermost circle
+      angleSlice = Math.PI * 2 / total;		// The width in radians of each "slice"
+
+  // Scale for the radius
+  var rScale = d3.scale.linear()
+    .range([0, radius])
+    .domain([0, cfg.maxValue]);
+
+  // Create the container SVG and g
+  var svg = d3.select(id).append("svg")
+      .attr("width",  cfg.w + cfg.margin.left + cfg.margin.right)
+      .attr("height", cfg.h + cfg.margin.top + cfg.margin.bottom)
+      .attr("class", "radar"+id);
+  var g = svg.append("g")
+      .attr("transform", "translate(" + (cfg.w/2 + cfg.margin.left) + "," + (cfg.h/2 + cfg.margin.top) + ")");
+
+  // Draw the Circular grid
+  var axisGrid = g.append("g").attr("class", "axisWrapper");
+
+  // Calculate the number of levels dynamically based on maxValue
+  var numLevels = cfg.maxValue;
+
+  // Draw the background circles
+  axisGrid.selectAll(".levels")
+     .data(d3.range(1, numLevels + 1).reverse())
+     .enter()
+    .append("circle")
+    .attr("class", "gridCircle")
+    .attr("r", function(d) { return (radius / cfg.maxValue) * d; }) // Adjusted calculation
+    .style("fill", "#CDCDCD")
+    .style("stroke", "#CDCDCD")
+    .style("fill-opacity", cfg.opacityCircles);
+
+  // Text indicating at what value each level is
+  axisGrid.selectAll(".axisLabel")
+     .data(d3.range(1, numLevels + 1).reverse())
+     .enter().append("text")
+     .attr("class", "axisLabel")
+     .attr("x", 4)
+     .attr("y", function(d) { return -d * radius / numLevels; })
+     .attr("dy", "0.4em")
+     .style("font-size", cfg.axisFontSize)
+     .attr("fill", "#737373")
+     .text(function(d) { return Math.round(cfg.maxValue * d / numLevels); });
+
+  // Draw the axes
+  var axis = axisGrid.selectAll(".axis")
+      .data(allAxis)
+      .enter()
+    .append("g")
+      .attr("class", "axis");
+
+  // Append the lines
+  axis.append("line")
+      .attr("x1", 0)
+      .attr("y1", 0)
+      .attr("x2", function(d, i) { return rScale(cfg.maxValue * 1.1) * Math.cos(angleSlice * i - Math.PI/2); })
+      .attr("y2", function(d, i) { return rScale(cfg.maxValue * 1.1) * Math.sin(angleSlice * i - Math.PI/2); })
+      .attr("class", "line")
+      .style("stroke", "white")
+      .style("stroke-width", "2px");
+
+  // Append the labels at each axis
+  axis.append("text")
+      .attr("class", "legend")
+      .style("font-size", cfg.axisFontSize)
+      .attr("text-anchor", function(d, i) {
+          if (i === 0 || i === total / 2) return "middle"; // For top and bottom labels
+          else if (i < total / 2) return "start"; // For left labels
+          else return "end"; // For right labels
+      })
+      .attr("dy", function(d, i) {
+          if (i === 0) return "-0.5em"; // For top labels
+          else if (i === total / 2) return "1em"; // For bottom labels
+          else return "0.35em"; // For left and right labels
+      })
+      .attr("x", function(d, i) {
+          if (i === 0 || i === total / 2) return 0; // For top and bottom labels
+          else if (i < total / 2) return -rScale(cfg.maxValue * cfg.labelFactor); // For left labels
+          else return rScale(cfg.maxValue * cfg.labelFactor); // For right labels
+      })
+      .attr("y", function(d, i) {
+          if (i === 0) return -rScale(cfg.maxValue * cfg.labelFactor); // For top labels
+          else if (i === total / 2) return rScale(cfg.maxValue * cfg.labelFactor); // For bottom labels
+          else return 0; // For left and right labels
+      })
+      .text(function(d) { return d; });
+
+  // The radial line function
+  var radarLine = d3.svg.line.radial()
+      .interpolate("linear-closed")
+      .radius(function(d) { return rScale(d.value); })
+      .angle(function(d,i) {	return i*angleSlice; });
+
+  if(cfg.roundStrokes) {
+    radarLine.interpolate("cardinal-closed");
+  }
+
+  // Create a wrapper for the blobs
+  var blobWrapper = g.selectAll(".radarWrapper")
+      .data(data)
+      .enter().append("g")
+      .attr("class", "radarWrapper");
+
+//  // Append the backgrounds
+//  blobWrapper
+//      .append("path")
+//      .attr("class", "radarArea")
+//      .attr("d", function(d) { return radarLine(d); })
+//      .style("fill", function(d, i) { return cfg.color(i); })
+//      .style("fill-opacity", cfg.opacityArea)
+//      .on('mouseover', function (d) {
+//          // Dim all blobs
+//          d3.selectAll(".radarArea")
+//              .transition().duration(200)
+//              .style("fill-opacity", cfg.opacityArea);
+//          // Bring back the hovered over blob
+//          d3.select(this)
+//              .transition().duration(200)
+//              .style("fill-opacity", 0.7);
+//      })
+//      .on('mouseout', function() {
+//          // Bring back all blobs
+//          d3.selectAll(".radarArea")
+//              .transition().duration(200)
+//              .style("fill-opacity", cfg.opacityArea);
+//      });
+
+  // Create the outlines
+  blobWrapper.append("path")
+      .attr("class", "radarStroke")
+      .attr("d", function(d) { return radarLine(d); })
+      .style("stroke-width", cfg.strokeWidth + "px")
+      .style("stroke", function(d, i) { return cfg.color(i); })
+      .style("fill", "none")
+      .style("filter" , "url(#glow)");
+
+  // Append the circles
+  blobWrapper.selectAll(".radarCircle")
+      .data(function(d) { return d; })
+      .enter().append("circle")
+      .attr("class", "radarCircle")
+      .attr("r", cfg.dotRadius)
+      .attr("cx", function(d, i) { return rScale(d.value) * Math.cos(angleSlice * i - Math.PI/2); })
+      .attr("cy", function(d, i) { return rScale(d.value) * Math.sin(angleSlice * i - Math.PI/2); })
+      .style("fill", function(d, i, j) { return cfg.color(j); })
+      .style("fill-opacity", 0.8);
+
+  // Wrapper for the invisible circles on top
+  var blobCircleWrapper = g.selectAll(".radarCircleWrapper")
+      .data(data)
+      .enter().append("g")
+      .attr("class", "radarCircleWrapper");
+
+  // Append a set of invisible circles on top for the mouseover pop-up
+  blobCircleWrapper.selectAll(".radarInvisibleCircle")
+      .data(function(d) { return d; })
+      .enter().append("circle")
+      .attr("class", "radarInvisibleCircle")
+      .attr("r", cfg.dotRadius * 1.5)
+      .attr("cx", function(d, i) { return rScale(d.value) * Math.cos(angleSlice * i - Math.PI/2); })
+      .attr("cy", function(d, i) { return rScale(d.value) * Math.sin(angleSlice * i - Math.PI/2); })
+      .style("fill", "none")
+      .style("pointer-events", "all")
+      .on("mouseover", function(d, i, j) {
+          var newX = parseFloat(d3.select(this).attr("cx")) - 10;
+          var newY = parseFloat(d3.select(this).attr("cy")) - 10;
+
+          tooltip
+              .attr("x", newX)
+              .attr("y", newY)
+              .text(`${genres[j]}: ${d.value}`) // Display genre and value
+              .attr("font-size", cfg.tooltipFontSize)
+              .transition().duration(200)
+              .style("opacity", 0.9);
+      })
+      .on("mouseout", function() {
+          tooltip.transition().duration(200)
+              .style("opacity", 0);
+      });
+
+  // Set up the small tooltip for when you hover over a circle
+  var tooltip = g.append("text")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+  // Append legend
+  var legend = g.selectAll(".legend")
+      .data(genres)
+      .enter()
+      .append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) {
+        var horz = cfg.w + 100;
+        var vert = i * 20 - cfg.h / 2;
+        return "translate(" + horz + "," + vert + ")";
+      });
+
+  legend.append("rect")
+      .attr("width", 18)
+      .attr("height", 18)
+      .style("fill", function(d, i) {
+        return cfg.color(i);
+      });
+
+  legend.append("text")
+      .attr("x", 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .text(function(d) {
+        return d;
+      });
+}
+
+//function RadarChart(id, data, genres, options) {
+//  var cfg = {
+//    w: 600,				// Width of the circle
+//    h: 600,				// Height of the circle
+//    margin: {top: 20, right: 20, bottom: 20, left: 20}, // The margins of the SVG
+//    levels: 3,				// How many levels or inner circles should there be drawn
+//    maxValue: 0, 			// What is the value that the biggest circle will represent
+//    labelFactor: 1.25, 	// How much farther than the radius of the outer circle should the labels be placed
+//    wrapWidth: 60, 		// The number of pixels after which a label needs to be given a new line
+//    opacityArea: 0.05, 	// The opacity of the area of the blob
+//    dotRadius: 4, 			// The size of the colored circles of each blog
+//    opacityCircles: 0.1, 	// The opacity of the circles of each blob
+//    strokeWidth: 2, 		// The width of the stroke around each blob
+//    roundStrokes: false,	// If true the area and stroke will follow a round path (cardinal-closed)
+//    color: d3.scale.category10()	// Color function
+//  };
+//
+//  // Put all of the options into a variable called cfg
+//  if('undefined' !== typeof options){
+//    for(var i in options){
+//      if('undefined' !== typeof options[i]){ cfg[i] = options[i]; }
+//    }
+//  }
+//
+//  // If the supplied maxValue is smaller than the actual one, replace by the max in the data
+//  var maxValue = Math.max(cfg.maxValue, d3.max(data, function(i){return d3.max(i.map(function(o){return o.value;}))}));
+//
+//  var allAxis = (data[0].map(function(i, j){return i.axis})),	//Names of each axis
+//      total = allAxis.length,					//The number of different axes
+//      radius = Math.min(cfg.w/2, cfg.h/2), 	//Radius of the outermost circle
+//      Format = d3.format('%'),			 	//Percentage formatting
+//      angleSlice = Math.PI * 2 / total;		//The width in radians of each "slice"
+//
+//  //Scale for the radius
+//  var rScale = d3.scale.linear()
+//    .range([0, radius])
+//    .domain([0, maxValue]);
+//
+//  // Create the container SVG and g
+//  var svg = d3.select(id).append("svg")
+//      .attr("width",  cfg.w + cfg.margin.left + cfg.margin.right)
+//      .attr("height", cfg.h + cfg.margin.top + cfg.margin.bottom)
+//      .attr("class", "radar"+id);
+//  var g = svg.append("g")
+//      .attr("transform", "translate(" + (cfg.w/2 + cfg.margin.left) + "," + (cfg.h/2 + cfg.margin.top) + ")");
+//
+//  //Filter for the outside glow
+//  var filter = g.append('defs').append('filter').attr('id','glow'),
+//      feGaussianBlur = filter.append('feGaussianBlur').attr('stdDeviation','2.5').attr('result','coloredBlur'),
+//      feMerge = filter.append('feMerge'),
+//      feMergeNode_1 = feMerge.append('feMergeNode').attr('in','coloredBlur'),
+//      feMergeNode_2 = feMerge.append('feMergeNode').attr('in','SourceGraphic');
+//
+//  // Draw the Circular grid
+//  var axisGrid = g.append("g").attr("class", "axisWrapper");
+//
+//  //Draw the background circles
+//  axisGrid.selectAll(".levels")
+//     .data(d3.range(1,(cfg.levels+1)).reverse())
+//     .enter()
+//    .append("circle")
+//    .attr("class", "gridCircle")
+//    .attr("r", function(d, i){return radius/cfg.levels*d;})
+//    .style("fill", "#CDCDCD")
+//    .style("stroke", "#CDCDCD")
+//    .style("fill-opacity", cfg.opacityCircles)
+//    .style("filter" , "url(#glow)");
+//
+//  //Text indicating at what % each level is
+//  axisGrid.selectAll(".axisLabel")
+//     .data(d3.range(1,(cfg.levels+1)).reverse())
+//     .enter().append("text")
+//     .attr("class", "axisLabel")
+//     .attr("x", 4)
+//     .attr("y", function(d){return -d*radius/cfg.levels;})
+//     .attr("dy", "0.4em")
+//     .style("font-size", "10px")
+//     .attr("fill", "#737373")
+//     .text(function(d,i) { return Format(maxValue * d/cfg.levels); });
+//
+//  //Draw the axes
+//  var axis = axisGrid.selectAll(".axis")
+//      .data(allAxis)
+//      .enter()
+//    .append("g")
+//      .attr("class", "axis");
+//  //Append the lines
+//  axis.append("line")
+//      .attr("x1", 0)
+//      .attr("y1", 0)
+//      .attr("x2", function(d, i){return rScale(maxValue*1.1) * Math.cos(angleSlice*i - Math.PI/2);})
+//      .attr("y2", function(d, i){return rScale(maxValue*1.1) * Math.sin(angleSlice*i - Math.PI/2);})
+//      .attr("class", "line")
+//      .style("stroke", "white")
+//      .style("stroke-width", "2px");
+//
+////  //Append the labels at each axis
+////  axis.append("text")
+////      .attr("class", "legend")
+////      .style("font-size", "11px")
+////      .attr("text-anchor", "middle")
+////      .attr("dy", "0.35em")
+////      .attr("x", function(d, i){return rScale(maxValue * cfg.labelFactor) * Math.cos(angleSlice*i - Math.PI/2);})
+////      .attr("y", function(d, i){return rScale(maxValue * cfg.labelFactor) * Math.sin(angleSlice*i - Math.PI/2);})
+////      .text(function(d){return d})
+////      .call(wrap, cfg.wrapWidth);
+//// Append the labels at each axis
+//axis.append("text")
+//    .attr("class", "legend")
+//    .style("font-size", "11px")
+//    .attr("text-anchor", function(d, i) {
+//        if (i === 0 || i === total / 2) return "middle"; // For top and bottom labels
+//        else if (i < total / 2) return "start"; // For left labels
+//        else return "end"; // For right labels
+//    })
+//    .attr("dy", function(d, i) {
+//        if (i === 0) return "-0.5em"; // For top labels
+//        else if (i === total / 2) return "1em"; // For bottom labels
+//        else return "0.35em"; // For left and right labels
+//    })
+//    .attr("x", function(d, i) {
+//        if (i === 0 || i === total / 2) return 0; // For top and bottom labels
+//        else if (i < total / 2) return -rScale(maxValue * cfg.labelFactor); // For left labels
+//        else return rScale(maxValue * cfg.labelFactor); // For right labels
+//    })
+//    .attr("y", function(d, i) {
+//        if (i === 0) return -rScale(maxValue * cfg.labelFactor); // For top labels
+//        else if (i === total / 2) return rScale(maxValue * cfg.labelFactor); // For bottom labels
+//        else return 0; // For left and right labels
+//    })
+//    .text(function(d){return d});
+//
+//
+//  //The radial line function
+//  var radarLine = d3.svg.line.radial()
+//      .interpolate("linear-closed")
+//      .radius(function(d) { return rScale(d.value); })
+//      .angle(function(d,i) {	return i*angleSlice; });
+//
+//  if(cfg.roundStrokes) {
+//    radarLine.interpolate("cardinal-closed");
+//  }
+//
+//  //Create a wrapper for the blobs
+//  var blobWrapper = g.selectAll(".radarWrapper")
+//      .data(data)
+//      .enter().append("g")
+//      .attr("class", "radarWrapper");
+//
+//  //Append the backgrounds
+//  blobWrapper
+//      .append("path")
+//      .attr("class", "radarArea")
+//      .attr("d", function(d,i) { return radarLine(d); })
+//      .style("fill", function(d,i) { return cfg.color(i); })
+//      .style("fill-opacity", cfg.opacityArea)
+//      .on('mouseover', function (d,i){
+//          //Dim all blobs
+//          d3.selectAll(".radarArea")
+//              .transition().duration(200)
+//              .style("fill-opacity", 0);
+//          //Bring back the hovered over blob
+//          d3.select(this)
+//              .transition().duration(200)
+//              .style("fill-opacity", 0);
+//      })
+//      .on('mouseout', function(){
+//          //Bring back all blobs
+//          d3.selectAll(".radarArea")
+//              .transition().duration(200)
+//              .style("fill-opacity", cfg.opacityArea);
+//      });
+//
+//  //Create the outlines
+//  blobWrapper.append("path")
+//      .attr("class", "radarStroke")
+//      .attr("d", function(d,i) { return radarLine(d); })
+//      .style("stroke-width", cfg.strokeWidth + "px")
+//      .style("stroke", function(d,i) { return cfg.color(i); })
+//      .style("fill", "none")
+//      .style("filter" , "url(#glow)");
+//
+//  //Append the circles
+//  blobWrapper.selectAll(".radarCircle")
+//      .data(function(d,i) { return d; })
+//      .enter().append("circle")
+//      .attr("class", "radarCircle")
+//      .attr("r", cfg.dotRadius)
+//      .attr("cx", function(d,i){ return rScale(d.value) * Math.cos(angleSlice*i - Math.PI/2); })
+//      .attr("cy", function(d,i){ return rScale(d.value) * Math.sin(angleSlice*i - Math.PI/2); })
+//      .style("fill", function(d,i,j) { return cfg.color(j); })
+//      .style("fill-opacity", 0.8);
+//
+//  //Wrapper for the invisible circles on top
+//  var blobCircleWrapper = g.selectAll(".radarCircleWrapper")
+//      .data(data)
+//      .enter().append("g")
+//      .attr("class", "radarCircleWrapper");
+//
+//  //Append a set of invisible circles on top for the mouseover pop-up
+//  blobCircleWrapper.selectAll(".radarInvisibleCircle")
+//      .data(function(d,i) { return d; })
+//      .enter().append("circle")
+//      .attr("class", "radarInvisibleCircle")
+//      .attr("r", cfg.dotRadius*1.5)
+//      .attr("cx", function(d,i){ return rScale(d.value) * Math.cos(angleSlice*i - Math.PI/2); })
+//      .attr("cy", function(d,i){ return rScale(d.value) * Math.sin(angleSlice*i - Math.PI/2); })
+//      .style("fill", "none")
+//      .style("pointer-events", "all")
+//      .on("mouseover", function(d,i) {
+//          newX =  parseFloat(d3.select(this).attr('cx')) - 10;
+//          newY =  parseFloat(d3.select(this).attr('cy')) - 10;
+//
+//          tooltip
+//              .attr('x', newX)
+//              .attr('y', newY)
+//              .text(Format(d.value))
+//              .transition().duration(200)
+//              .style('opacity', 0);
+//      })
+//      .on("mouseout", function(){
+//          tooltip.transition().duration(200)
+//              .style("opacity", 0);
+//      });
+//
+//  //Set up the small tooltip for when you hover over a circle
+//  var tooltip = g.append("text")
+//      .attr("class", "tooltip")
+//      .style("opacity", 0);
+//
+//  // Append legend
+//  var legend = g.selectAll('.legend')
+//      .data(genres)
+//      .enter()
+//      .append('g')
+//      .attr('class', 'legend')
+//      .attr('transform', function(d, i) {
+//        var horz = cfg.w + 100;
+//        var vert = i * 20 - cfg.h / 2;
+//        return 'translate(' + horz + ',' + vert + ')';
+//      });
+//
+//  legend.append('rect')
+//      .attr('width', 18)
+//      .attr('height', 18)
+//      .style('fill', function(d, i) {
+//        return cfg.color(i);
+//      });
+//
+//  legend.append('text')
+//      .attr('x', 24)
+//      .attr('y', 9)
+//      .attr('dy', '.35em')
+//      .text(function(d) {
+//        return d;
+//      });
+////  var radarAreas = blobWrapper
+////    .append("path")
+////    .attr("class", "radarArea")
+////    .attr("d", function(d,i) { return radarLine(d); })
+////    .style("fill", "none")
+////    .style("stroke", function(d,i) { return cfg.color(i); })
+////    .style("stroke-width", "2px")
+////    .style("opacity", 0); // Set initial opacity to 0
+////
+////  radarAreas.on("mouseover", function(d, i) {
+////      d3.select(this).style("fill", cfg.color(i)).style("opacity", 0.7);
+////  });
+////
+////  radarAreas.on("mouseout", function(d, i) {
+////      d3.select(this).style("fill", "none").style("opacity", 0);
+////  });
+//}
+
+// Example usage:
+// RadarChart('#radarplot', radarData, genres, radarChartOptions);
+
 
 //function plotScatterplotMatrix(data, num_of_clusters) {
 //
@@ -196,14 +800,14 @@ function plotScatterplotMatrix(data, num_of_clusters) {
   var columns = Object.keys(data[0]).filter(function(d) { return d !== "labels"; });
   var numColumns = columns.length;
 
-  var plotSize = 80,
-      padding = 50,
-      width = (numColumns * plotSize) + ((numColumns + 1) * padding),
+  var plotSize = 70,
+      padding = 40,
+      width = (numColumns * 80) + ((numColumns + 1) * padding),
       height = (numColumns * plotSize) + ((numColumns + 1) * padding);
 
   var svg = d3.select("#scatterplot").append("svg")
-      .attr("width", width)
-      .attr("height", height)
+      .attr("width", 600)
+      .attr("height", 500)
       .append("g");
 
   var x = d3.scale.linear()
@@ -255,7 +859,7 @@ function plotScatterplotMatrix(data, num_of_clusters) {
       if (i === j) {
         plot.append("text")
             .attr("x", plotSize / 2)
-            .attr("y", plotSize + (padding + 20) / 2)
+            .attr("y", plotSize + (padding + 30) / 2)
             .style("text-anchor", "middle")
             .text(formatAttributeName(xColumn))
             .attr("transform", "rotate(0 " + plotSize / 2 + "," + (plotSize + padding / 2) + ")");
@@ -265,7 +869,7 @@ function plotScatterplotMatrix(data, num_of_clusters) {
 
   svg.append("text")
       .attr("x", (width / 2))
-      .attr("y", (height/2)-260)
+      .attr("y", (height-460))
       .attr("text-anchor", "middle")
       .style("font-size", "16px")
       .style("text-decoration", "underline")
@@ -303,7 +907,7 @@ function render_plot_1(selected_option) {
   // Also Refer Here: https://d3-graph-gallery.com/graph/boxplot_horizontal.html
 
   // set the dimensions and margins of the graph
-  var margin = { top: 10, right: 30, bottom: 30, left: 40 },
+  var margin = { top: 30, right: 30, bottom: 90, left: 40 },
     width = 760 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
@@ -352,7 +956,23 @@ var x = d3.scale.ordinal()
 svg.append("g")
     .attr("class", "axis")
     .attr("transform", "translate(0," + height + ")")
-    .call(d3.svg.axis().scale(x).orient("bottom"));
+    .call(d3.svg.axis().scale(x).orient("bottom"))
+    .selectAll("text")
+    .style("text-anchor", "end")
+    .attr("dx", "-.8em")
+    .attr("dy", ".15em")
+    .attr("transform", function(d) {
+        return "rotate(-45)";
+    });
+    svg.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 0 - margin.left)
+    .attr("x", 0 - (height / 2))
+    .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .text(selected_option +" Scores");
+
+    //.attr("transform", "rotate(-45)");
 
     // Show the X scale
 //    var y = d3.scaleLinear()
@@ -377,9 +997,9 @@ var myColor = d3.scale.category10();
     // Add X axis label:
     svg.append("text")
       .attr("text-anchor", "end")
-      .attr("x", width)
-      .attr("y", height + margin.top + 30)
-      .text("Sepal Length");
+      .attr("x", width/2)
+      .attr("y", height + margin.top + 50)
+      .text("Favourite Genre");
 
     // Show the main vertical line
     console.log(sumstat);
@@ -421,6 +1041,7 @@ var myColor = d3.scale.category10();
     .attr("stroke", "black")
     .style("width", 80)
 
+
     // create a tooltip
     var tooltip = d3.select("#graph1")
       .append("div")
@@ -451,7 +1072,7 @@ var myColor = d3.scale.category10();
     }
 
     // Add individual points with jitter
-var jitterWidth = 50
+var jitterWidth = 30
 svg
   .selectAll("indPoints")
   .data(graph1_data)
@@ -502,6 +1123,7 @@ function initialize(data) {
       render_plot_1_options();
       render_scatter_plot();
       mds_rows_plot(3);
+      plotRadarPlot();
 
     })
     .catch(error => console.error("Error Reading Graph1 Box Plot Data:", error));

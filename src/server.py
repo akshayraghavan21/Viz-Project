@@ -57,8 +57,16 @@ def mds_row_data_func(num_clusters):
     return jsonify(mds_row_data_with_clusters)
 
 
+@app.route('/radar_plot/')
+def radar_plot():
+    columns = ["fav_genre", "anxiety", "depression", "insomnia", "ocd"]
+    data = df[columns]
+    all_genre_means = data.groupby(by=['fav_genre']).agg(
+        {'anxiety': 'mean', 'depression': 'mean', 'insomnia': 'mean',
+         'ocd': 'mean'})
+    all_genre_means.reset_index(drop=False, inplace=True)
 
-
+    return jsonify(all_genre_means.to_dict(orient='records'))
 
 if __name__ == '__main__':
     app.run(debug=True)
