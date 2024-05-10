@@ -5,36 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" type="text/css" href="https://syntagmatic.github.io/parallel-coordinates/d3.parcoords.css" />
 </head>
 <body>
-    <div class="container">
-        <div class="flex-container">
-            <div class="row">
-                <!-- <div id="graph1" class="left">
-                    <div id="graph1dropdown1">
-                        <select id="graph1dropdown1options"></select>
-                    </div>
-                </div> -->
-                <div id="parent_graph1">
-                    <div id="graph1dropdown1">
-                        <select id="graph1dropdown1options"></select>
+<!--    <div class="container">-->
+<!--        <div class="flex-container">-->
+<!--            <div class="row">-->
+<!--                &lt;!&ndash; <div id="graph1" class="left">-->
+<!--                    <div id="graph1dropdown1">-->
+<!--                        <select id="graph1dropdown1options"></select>-->
+<!--                    </div>-->
+<!--                </div> &ndash;&gt;-->
+<!--                <div id="parent_graph1">-->
+<!--                    <div id="graph1dropdown1">-->
+<!--                        <select id="graph1dropdown1options"></select>-->
+<!--                    </div>-->
+<!--                    <div id="graph1" class="left">-->
+<!--                        &lt;!&ndash; Graph content goes here &ndash;&gt;-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div id="radarplot" class="right"></div>-->
+<!--            </div>-->
+<!--            <div class="row">-->
+<!--                &lt;!&ndash; <div id="mds_row_plot" class="left"></div> &ndash;&gt;-->
+
+<!--&lt;!&ndash;                <div id="scatterplot" class="right"></div>&ndash;&gt;-->
+<!--                    <div id="pcp_plot" class="parcoords"></div>-->
+<!--                    <div id="graph4" class="left">-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+<div><h2 align="center">Music and Mental Health Analysis</h2></div>
+<div class="kpi-container">
+
+    <div class="kpi">
+        <h1 style="col">617</h1>
+        <p id="kpi1">Number of Survey Participants</p>
+    </div>
+    <div class="kpi">
+        <h1>3.7 Hrs</h1>
+        <p id="kpi1">Average Music Listening</p>
+    </div>
+    <div class="kpi">
+        <div id="menta_health" ></div>
+        <p id="kpi1">Average Scores</p>
+    </div>
+    <div class="kpi">
+        <div id="donut_effects" ></div>
+        <p id="kpi1">How Music has Effected?</p>
+    </div>
+    <div class="kpi">
+        <div id="agehist"></div>
+        <p id="kpi1">Age Distribution</p>
+    </div>
+</div>
+<div class="container">
+    <!-- Row 1 -->
+    <div class="box">
+                            <div id="graph1dropdown1">
+                        <select id="graph1dropdown1options" style="display: none;"></select>
                     </div>
                     <div id="graph1" class="left">
                         <!-- Graph content goes here -->
-                    </div>
-                </div>
-                <div id="radarplot" class="right"></div>
-            </div>
-            <div class="row">
-                <div id="mds_row_plot" class="left"></div>
-                <div id="scatterplot" class="right"></div>
-            </div>
-        </div>
+                        </div>
     </div>
+    <div id="mds_row_plot" class="box"></div>
+
+    <div id="slider" class="box"></div>
+    <div id="radarplot" class="box"></div>
+    <div id="pcp_plot" class="box parcoords"></div>
+
+</div>
 
     <!-- <script src="https://d3js.org/d3.v7.min.js"></script> -->
     <script src="https://d3js.org/d3.v3.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/1.0.1/lodash.min.js"></script>
+    <script src="https://syntagmatic.github.io/parallel-coordinates/d3.parcoords.js"></script>
 </body>
 </html>
