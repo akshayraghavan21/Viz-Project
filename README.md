@@ -3,7 +3,7 @@
 #######################################################
 Project Name: "Harmony Within: Exploring the Healing Power of Music on Mental Health"
 Dev: Akshay Raghavan, Sujeeth Anil Vankudari
-Description: Exploring music as a therapeutic tool for mental health
+Description: Exploring music as a therapeutic tool for mental health utilizing interactive visualization techniques and data analysis
 #######################################################
 ```
 
